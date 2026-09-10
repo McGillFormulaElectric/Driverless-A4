@@ -14,9 +14,9 @@
       <!-- Multicast rarely traverses Tailscale; use unicast peers list built at runtime. -->
       <ParticipantIndex>auto</ParticipantIndex>
       <Peers>
-        <!-- The professor node's Tailscale hostname/IP. Override with the
+        <!-- Neil's node Tailscale hostname/IP. Override with the
              CYCLONEDDS_PEERS env var or edit this list. -->
-        <Peer address="${A4_PROFESSOR_HOST:-professor}"/>
+        <Peer address="${A4_NEIL_HOST:-neil}"/>
       </Peers>
     </Discovery>
     <Internal>

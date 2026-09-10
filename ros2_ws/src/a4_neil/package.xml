@@ -1,13 +1,14 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>a4_student</name>
+  <name>a4_neil</name>
   <version>0.1.0</version>
-  <description>MFE A4 student template: dead-reckoning (A4.1) and 2D EKF pose estimator (A4.2).</description>
-  <maintainer email="student@example.com">Student</maintainer>
+  <description>MFE A4 Neil side: figure-8 sensor simulator (IMU/GPS/truth) and auto-discovery grader.</description>
+  <maintainer email="neilgeorge03@gmail.com">Neil</maintainer>
   <license>MIT</license>
 
   <depend>rclpy</depend>
+  <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>

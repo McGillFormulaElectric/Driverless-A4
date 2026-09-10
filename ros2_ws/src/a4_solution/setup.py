@@ -1,7 +1,7 @@
 from setuptools import setup
 from glob import glob
 
-package_name = 'a4_professor'
+package_name = 'a4_solution'
 
 setup(
     name=package_name,
@@ -11,18 +11,19 @@ setup(
         ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/launch', glob('launch/*.launch.py')),
+        ('share/' + package_name + '/config', glob('config/*.yaml')),
     ],
     install_requires=['setuptools', 'numpy'],
     zip_safe=True,
-    maintainer='Professor',
-    maintainer_email='professor@example.com',
-    description='MFE A4 professor sensor sim + grader.',
+    maintainer='Neil George',
+    maintainer_email='neilgeorge03@gmail.com',
+    description='MFE A4 solution: dead-reckoning (A4.1) and 2D EKF pose estimator (A4.2).',
     license='MIT',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'sensor_sim_node = a4_professor.sensor_sim_node:main',
-            'grader = a4_professor.grader:main',
+            'dead_reckoning_node = a4_solution.dead_reckoning_node:main',
+            'ekf_node = a4_solution.ekf_node:main',
         ],
     },
 )

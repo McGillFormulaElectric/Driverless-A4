@@ -1,7 +1,7 @@
 from setuptools import setup
 from glob import glob
 
-package_name = 'a4_student'
+package_name = 'a4_neil'
 
 setup(
     name=package_name,
@@ -11,18 +11,19 @@ setup(
         ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/launch', glob('launch/*.launch.py')),
+        ('share/' + package_name + '/config', glob('config/*.yaml')),
     ],
     install_requires=['setuptools', 'numpy'],
     zip_safe=True,
-    maintainer='Student',
-    maintainer_email='student@example.com',
-    description='MFE A4 student template.',
+    maintainer='Neil',
+    maintainer_email='neilgeorge03@gmail.com',
+    description='MFE A4 Neil-side sensor sim + grader.',
     license='MIT',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'dead_reckoning_node = a4_student.dead_reckoning_node:main',
-            'ekf_node = a4_student.ekf_node:main',
+            'sensor_sim_node = a4_neil.sensor_sim_node:main',
+            'grader = a4_neil.grader:main',
         ],
     },
 )

@@ -1,0 +1,19 @@
+# Solution-side EKF tuning parameters for MFE A4.
+# These are HINTS — tune them until your EKF passes RMSE < 0.5 m.
+# The /** wildcard matches any node name/namespace so both dr and ekf nodes read
+# the same file (dead_reckoning_node simply ignores the ekf-specific keys).
+/**:
+  ros__parameters:
+    # Initial covariance P0 diagonal entries. Small because the vehicle
+    # starts at rest at the origin with heading = 0.
+    initial_pos_cov: 1.0      # variance on px, py [m^2]
+    initial_yaw_cov: 0.1      # variance on theta [rad^2]
+    initial_v_cov: 0.5        # variance on forward speed [m^2/s^2]
+
+    # Process-noise Q diagonal drivers.
+    q_accel: 0.1              # process noise on v (from unmodeled accel)
+    q_yaw_rate: 0.01          # process noise on theta (from unmodeled omega)
+
+    # Measurement noise R diagonal. NOTE: this is a *variance*, not a sigma.
+    # GPS sigma is 0.5 m -> r_gps = 0.5**2 = 0.25.
+    r_gps: 0.25

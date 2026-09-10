@@ -1,6 +1,6 @@
 """A4.1 — dead-reckoning pose estimator (IMU-only).
 
-Subscribes to /professor/imu (sensor_msgs/Imu) and integrates the body-frame
+Subscribes to /neil/imu (sensor_msgs/Imu) and integrates the body-frame
 forward acceleration (`linear_acceleration.x`) and yaw rate
 (`angular_velocity.z`) into a 2D pose on `<namespace>/odom_dr`
 (nav_msgs/Odometry, frame `map`).
@@ -14,7 +14,7 @@ Trajectory contract (see README):
     - Initial state is therefore (x, y, theta, v) = (0, 0, 0, 0).
 
 Run:
-    ros2 launch a4_student dr.launch.py github_user:=<your-handle>
+    ros2 launch a4_solution dr.launch.py github_user:=<your-handle>
 """
 import math
 
@@ -41,7 +41,7 @@ class DeadReckoningNode(Node):
         super().__init__('dead_reckoning_node')
 
         self.sub = self.create_subscription(
-            Imu, '/professor/imu', self._on_imu, RELIABLE_QOS
+            Imu, '/neil/imu', self._on_imu, RELIABLE_QOS
         )
         self.pub = self.create_publisher(Odometry, 'odom_dr', RELIABLE_QOS)
 
@@ -56,7 +56,7 @@ class DeadReckoningNode(Node):
 
         ns = self.get_namespace()
         self.get_logger().info(
-            f'Dead-reckoning from /professor/imu -> {ns}/odom_dr (map frame). '
+            f'Dead-reckoning from /neil/imu -> {ns}/odom_dr (map frame). '
             'Expect drift; A4.1 grader only scores the first 10 s.'
         )
 

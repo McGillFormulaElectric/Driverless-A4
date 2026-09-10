@@ -18,8 +18,13 @@ References (see README):
     - Wikipedia: Extended Kalman filter
     - Thrun, Burgard, Fox — Probabilistic Robotics, Ch. 3
 
+Tuning knobs (see a4_solution/config/params.yaml — these are hints, tune away):
+    initial_pos_cov, initial_yaw_cov, initial_v_cov   -> P0 diagonal
+    q_accel, q_yaw_rate                               -> Q diagonal drivers
+    r_gps (variance, not sigma; 0.5 m sigma -> 0.25)  -> R diagonal
+
 Run:
-    ros2 launch a4_student ekf.launch.py github_user:=<your-handle>
+    ros2 launch a4_solution ekf.launch.py github_user:=<your-handle>
 """
 import math
 
@@ -43,27 +48,40 @@ def yaw_to_quat(theta: float) -> tuple[float, float, float, float]:
 
 
 class EKF:
-    """Plain-numpy 2D EKF. No ROS types in here so students can unit-test it."""
+    """Plain-numpy 2D EKF. No ROS types in here so students can unit-test it.
 
-    def __init__(self):
+    Tuning constants are injected via the constructor so this class stays
+    ROS-agnostic. See EkfNode.__init__ for parameter wiring.
+    """
+
+    def __init__(
+        self,
+        initial_pos_cov: float = 1.0,
+        initial_yaw_cov: float = 0.1,
+        initial_v_cov: float = 0.5,
+        q_accel: float = 0.1,
+        q_yaw_rate: float = 0.01,
+        r_gps: float = 0.25,  # NOTE: variance, not sigma. 0.5 m sigma -> 0.25.
+    ):
         # State vector [x, y, theta, v]
         self.x = np.zeros(4)
 
         # ------------------------------------------------------------------
-        # TODO(student): choose initial covariance P (4x4).
+        # Initial covariance P (4x4). Diagonal, seeded from ROS parameters.
         # Small values because we know we start at rest at the origin.
-        # Hint: np.diag([0.01, 0.01, 0.001, 0.01])
         # ------------------------------------------------------------------
-        self.P = np.eye(4)  # <-- replace
+        self.P = np.diag([initial_pos_cov, initial_pos_cov,
+                          initial_yaw_cov, initial_v_cov])
 
         # ------------------------------------------------------------------
-        # TODO(student): pick process-noise Q (4x4) and measurement-noise R (2x2).
-        # Suggested starting points:
-        #     Q = np.diag([0.01, 0.01, 0.001, 0.1])
-        #     R = np.diag([0.5**2, 0.5**2])   # matches professor's GPS sigma
+        # Process-noise Q (4x4) and measurement-noise R (2x2).
+        # Position rows of Q are driven by q_accel (they get accel noise
+        # after one integration); theta by q_yaw_rate; v by q_accel.
+        # Students: feel free to override these directly if you want a
+        # different structure.
         # ------------------------------------------------------------------
-        self.Q = np.eye(4)  # <-- replace
-        self.R = np.eye(2)  # <-- replace
+        self.Q = np.diag([q_accel, q_accel, q_yaw_rate, q_accel])
+        self.R = np.diag([r_gps, r_gps])
 
     def predict(self, a_body_x: float, omega_z: float, dt: float) -> None:
         """Non-linear motion model f(x, u) + EKF covariance propagation."""
@@ -113,17 +131,32 @@ class EkfNode(Node):
     def __init__(self):
         super().__init__('ekf_node')
 
-        self.ekf = EKF()
+        # --- ROS parameters (see a4_solution/config/params.yaml) -------------
+        self.declare_parameter('initial_pos_cov', 1.0)
+        self.declare_parameter('initial_yaw_cov', 0.1)
+        self.declare_parameter('initial_v_cov', 0.5)
+        self.declare_parameter('q_accel', 0.1)
+        self.declare_parameter('q_yaw_rate', 0.01)
+        self.declare_parameter('r_gps', 0.25)  # variance, not sigma
 
-        self.create_subscription(Imu, '/professor/imu', self._on_imu, RELIABLE_QOS)
-        self.create_subscription(PoseStamped, '/professor/gps', self._on_gps, RELIABLE_QOS)
+        self.ekf = EKF(
+            initial_pos_cov=float(self.get_parameter('initial_pos_cov').value),
+            initial_yaw_cov=float(self.get_parameter('initial_yaw_cov').value),
+            initial_v_cov=float(self.get_parameter('initial_v_cov').value),
+            q_accel=float(self.get_parameter('q_accel').value),
+            q_yaw_rate=float(self.get_parameter('q_yaw_rate').value),
+            r_gps=float(self.get_parameter('r_gps').value),
+        )
+
+        self.create_subscription(Imu, '/neil/imu', self._on_imu, RELIABLE_QOS)
+        self.create_subscription(PoseStamped, '/neil/gps', self._on_gps, RELIABLE_QOS)
         self.pub = self.create_publisher(Odometry, 'odom', RELIABLE_QOS)
 
         self._t_prev: float | None = None
 
         ns = self.get_namespace()
         self.get_logger().info(
-            f'EKF fusing /professor/imu + /professor/gps -> {ns}/odom (map frame).'
+            f'EKF fusing /neil/imu + /neil/gps -> {ns}/odom (map frame).'
         )
 
     def _on_imu(self, msg: Imu) -> None:
