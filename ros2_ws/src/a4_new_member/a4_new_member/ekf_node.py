@@ -18,13 +18,13 @@ References (see README):
     - Wikipedia: Extended Kalman filter
     - Thrun, Burgard, Fox — Probabilistic Robotics, Ch. 3
 
-Tuning knobs (see a4_solution/config/params.yaml — these are hints, tune away):
+Tuning knobs (see a4_new_member/config/params.yaml — these are hints, tune away):
     initial_pos_cov, initial_yaw_cov, initial_v_cov   -> P0 diagonal
     q_accel, q_yaw_rate                               -> Q diagonal drivers
     r_gps (variance, not sigma; 0.5 m sigma -> 0.25)  -> R diagonal
 
 Run:
-    ros2 launch a4_solution ekf.launch.py github_user:=<your-handle>
+    ros2 launch a4_new_member ekf.launch.py github_user:=<your-handle>
 """
 import math
 
@@ -131,7 +131,7 @@ class EkfNode(Node):
     def __init__(self):
         super().__init__('ekf_node')
 
-        # --- ROS parameters (see a4_solution/config/params.yaml) -------------
+        # --- ROS parameters (see a4_new_member/config/params.yaml) -------------
         self.declare_parameter('initial_pos_cov', 1.0)
         self.declare_parameter('initial_yaw_cov', 0.1)
         self.declare_parameter('initial_v_cov', 0.5)

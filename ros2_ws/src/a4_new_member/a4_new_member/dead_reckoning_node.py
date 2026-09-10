@@ -14,7 +14,7 @@ Trajectory contract (see README):
     - Initial state is therefore (x, y, theta, v) = (0, 0, 0, 0).
 
 Run:
-    ros2 launch a4_solution dr.launch.py github_user:=<your-handle>
+    ros2 launch a4_new_member dr.launch.py github_user:=<your-handle>
 """
 import math
 

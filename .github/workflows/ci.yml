@@ -21,7 +21,7 @@ jobs:
         uses: ros-tooling/action-ros-ci@v0.3
         with:
           target-ros2-distro: humble
-          package-name: a4_neil a4_solution
+          package-name: a4_neil a4_new_member
           vcs-repo-file-url: ""
           colcon-defaults: |
             {

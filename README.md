@@ -42,7 +42,7 @@ cd docker
 export GITHUB_USER=<your-github-handle>          # required
 export A4_NEIL_HOST=<neil tailnet host>          # e.g. neil.tail1234.ts.net
 docker compose build
-docker compose run --rm solution
+docker compose run --rm new_member
 ```
 
 Inside the container you'll have `/workspace` mounted to `ros2_ws/`. Build and source:
@@ -81,13 +81,13 @@ y_new     = y + v_new * sin(theta_new) * dt
 `dt` should come from the difference between consecutive IMU header timestamps — do **not** use wall-clock time, since Neil stamps everything with simulated time (this is what makes grading reproducible).
 
 ### 2.2 Where to put your code
-Open `ros2_ws/src/a4_solution/a4_solution/dead_reckoning_node.py`. There's a `TODO(student)` block inside `_on_imu`. Replace the stub with the integration above.
+Open `ros2_ws/src/a4_new_member/a4_new_member/dead_reckoning_node.py`. There's a `TODO(student)` block inside `_on_imu`. Replace the stub with the integration above.
 
 ### 2.3 Run it
 ```bash
 colcon build --symlink-install
 source install/setup.bash
-ros2 launch a4_solution dr.launch.py github_user:=$GITHUB_USER
+ros2 launch a4_new_member dr.launch.py github_user:=$GITHUB_USER
 ```
 
 ### 2.4 How A4.1 grading works
@@ -141,7 +141,7 @@ H = [[1, 0, 0, 0],
 | IMU yaw rate      | `angular_velocity.z`     | 0.02 rad/s |
 | GPS position      | `pose.position.{x,y}`    | 0.5 m each |
 
-A reasonable starting point for the EKF tuning constants (these are the defaults in `a4_solution/config/params.yaml`; feel free to tune):
+A reasonable starting point for the EKF tuning constants (these are the defaults in `a4_new_member/config/params.yaml`; feel free to tune):
 
 ```
 Q = diag([0.01, 0.01, 0.001, 0.1])     # process noise
@@ -150,13 +150,13 @@ P0 = diag([0.01, 0.01, 0.001, 0.01])   # small: we know we start at rest at orig
 ```
 
 ### 3.3 Where to put your code
-Open `ros2_ws/src/a4_solution/a4_solution/ekf_node.py`. There is a plain-numpy `EKF` class with `predict()` and `update_gps()`. The ROS node calls them for you; you just have to fill in the math.
+Open `ros2_ws/src/a4_new_member/a4_new_member/ekf_node.py`. There is a plain-numpy `EKF` class with `predict()` and `update_gps()`. The ROS node calls them for you; you just have to fill in the math.
 
 ### 3.4 Run it
 ```bash
 colcon build --symlink-install
 source install/setup.bash
-ros2 launch a4_solution ekf.launch.py github_user:=$GITHUB_USER
+ros2 launch a4_new_member ekf.launch.py github_user:=$GITHUB_USER
 ```
 
 ### 3.5 How A4.2 grading works
@@ -237,7 +237,7 @@ Driverless-A4/
 ├── docker/                  # Dockerfile, compose, CycloneDDS config, entrypoint
 ├── ros2_ws/
 │   └── src/
-│       ├── a4_solution/     # your template — this is where you write code
+│       ├── a4_new_member/     # your template — this is where you write code
 │       └── a4_neil/         # for reference; not run by students
 └── README.md
 ```
@@ -254,12 +254,12 @@ Driverless-A4/
 
 ## 8. Parameters
 
-The scenario constants (sensor rates, noise sigmas, trajectory shape, grader thresholds, EKF tuning) are exposed as ROS parameters and loaded from YAML at launch time. You should not need to edit the Neil-side file for the graded assignment, but tweaking the solution-side EKF knobs is exactly how you tune your filter (or, for the graded run, exactly how you keep the defaults sane).
+The scenario constants (sensor rates, noise sigmas, trajectory shape, grader thresholds, EKF tuning) are exposed as ROS parameters and loaded from YAML at launch time. You should not need to edit the Neil-side file for the graded assignment, but tweaking the new_member-side EKF knobs is exactly how you tune your filter (or, for the graded run, exactly how you keep the defaults sane).
 
 - **Neil side** — [`ros2_ws/src/a4_neil/config/params.yaml`](ros2_ws/src/a4_neil/config/params.yaml)
   - `sensor_sim_node`: `imu_hz`, `gps_hz`, `imu_accel_sigma`, `imu_yaw_rate_sigma`, `gps_pos_sigma`, `seed`, trajectory (`v_ss`, `tau_ramp`, `omega_max`, `traj_period`).
   - `grader`: `dr_rmse_threshold`, `dr_window_s`, `ekf_rmse_threshold`, `match_window`, `discovery_period_s`, `grade_period_s`.
-- **Solution side** — [`ros2_ws/src/a4_solution/config/params.yaml`](ros2_ws/src/a4_solution/config/params.yaml)
+- **Solution side** — [`ros2_ws/src/a4_new_member/config/params.yaml`](ros2_ws/src/a4_new_member/config/params.yaml)
   - EKF tuning: `initial_pos_cov`, `initial_yaw_cov`, `initial_v_cov`, `q_accel`, `q_yaw_rate`, `r_gps`. These are HINTS you can tune — the defaults are a reasonable starting point.
 
 The launch files (`neil.launch.py`, `dr.launch.py`, `ekf.launch.py`, `bringup.launch.py`) pass the YAML file into each node via the `parameters=[...]` argument, so `ros2 launch` picks them up automatically.
@@ -271,10 +271,10 @@ The launch files (`neil.launch.py`, `dr.launch.py`, `ekf.launch.py`, `bringup.la
 If you want to run the whole stack (Neil sensor sim + grader + your DR + your EKF) in one command — useful when hacking offline without Tailscale — use the composed launch:
 
 ```bash
-ros2 launch a4_solution bringup.launch.py github_user:=<your-handle>
+ros2 launch a4_new_member bringup.launch.py github_user:=<your-handle>
 ```
 
-This includes Neil's launch file (unnamespaced, so `/neil/imu`, `/neil/gps`, `/neil/truth`, `/neil/feedback` stay where the grader expects them) and both `dead_reckoning_node` + `ekf_node` under `PushRosNamespace(<your-handle>)`. For the real graded run over Tailscale you should still use `ros2 launch a4_solution dr.launch.py` / `ekf.launch.py` and let Neil's process own the Neil side.
+This includes Neil's launch file (unnamespaced, so `/neil/imu`, `/neil/gps`, `/neil/truth`, `/neil/feedback` stay where the grader expects them) and both `dead_reckoning_node` + `ekf_node` under `PushRosNamespace(<your-handle>)`. For the real graded run over Tailscale you should still use `ros2 launch a4_new_member dr.launch.py` / `ekf.launch.py` and let Neil's process own the Neil side.
 
 ---
 
@@ -301,5 +301,5 @@ Follow this flow to submit your work:
    ### A4.2 EKF
    ![A4.2 feedback](submissions/a4_2_feedback.png)
    ```
-5. **CI must be green.** GitHub Actions builds `a4_neil` and `a4_solution` on ROS 2 Humble on every push. If the badge at the top of this README is red for your branch, fix the build before requesting review.
+5. **CI must be green.** GitHub Actions builds `a4_neil` and `a4_new_member` on ROS 2 Humble on every push. If the badge at the top of this README is red for your branch, fix the build before requesting review.
 6. **Wait for review and merge.** Neil will review your PR, may request changes, and will merge it into `main` once it passes.

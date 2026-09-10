@@ -1,12 +1,12 @@
-"""Composed bring-up: Neil stack + solution DR + solution EKF nodes.
+"""Composed bring-up: Neil stack + new_member DR + new_member EKF nodes.
 
 Includes:
   - a4_neil/neil.launch.py       (NOT namespaced — it owns /neil/*)
-  - a4_solution/dr.launch.py     (pushed under /<github_user>)
-  - a4_solution/ekf.launch.py    (pushed under /<github_user>)
+  - a4_new_member/dr.launch.py     (pushed under /<github_user>)
+  - a4_new_member/ekf.launch.py    (pushed under /<github_user>)
 
 Usage:
-    ros2 launch a4_solution bringup.launch.py github_user:=<your-handle>
+    ros2 launch a4_new_member bringup.launch.py github_user:=<your-handle>
 """
 import os
 
@@ -25,10 +25,10 @@ def generate_launch_description():
         get_package_share_directory('a4_neil'), 'launch', 'neil.launch.py'
     )
     dr_launch = os.path.join(
-        get_package_share_directory('a4_solution'), 'launch', 'dr.launch.py'
+        get_package_share_directory('a4_new_member'), 'launch', 'dr.launch.py'
     )
     ekf_launch = os.path.join(
-        get_package_share_directory('a4_solution'), 'launch', 'ekf.launch.py'
+        get_package_share_directory('a4_new_member'), 'launch', 'ekf.launch.py'
     )
 
     neil_group = GroupAction([
@@ -37,7 +37,7 @@ def generate_launch_description():
         IncludeLaunchDescription(PythonLaunchDescriptionSource(neil_launch)),
     ])
 
-    solution_group = GroupAction([
+    new_member_group = GroupAction([
         PushRosNamespace(github_user),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(dr_launch),
@@ -52,8 +52,8 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument(
             'github_user',
-            description='Your GitHub username; used as the ROS namespace for the solution nodes.',
+            description='Your GitHub username; used as the ROS namespace for the new_member nodes.',
         ),
         neil_group,
-        solution_group,
+        new_member_group,
     ])
