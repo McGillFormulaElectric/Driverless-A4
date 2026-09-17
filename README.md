@@ -1,7 +1,5 @@
 # MFE Driverless — Assignment 4: 2D pose estimation with an EKF
 
-![CI](https://github.com/McGillFormulaElectric/Driverless-A4/actions/workflows/ci.yml/badge.svg)
-
 This assignment teaches **sensor fusion for vehicle pose estimation**: you take a noisy IMU and a noisy GPS, and you produce a clean estimate of where the car is and where it is pointing. It is split into two parts, [Advent-of-Code style](https://adventofcode.com/): Part 1 is a warm-up, Part 2 is the real challenge.
 
 - **A4.1** — dead-reckoning from IMU only. Watch it drift. This is the "why we need fusion" demo.
@@ -289,5 +287,5 @@ Follow this flow to submit your work:
    ### A4.2 EKF
    ![A4.2 feedback](submissions/a4_2_feedback.png)
    ```
-5. **CI must be green.** GitHub Actions builds `a4_neil` and `a4_new_member` on ROS 2 Humble on every push. If the badge at the top of this README is red for your branch, fix the build before requesting review.
-6. **Wait for review and merge.** Neil will review your PR, may request changes, and will merge it into `main` once it passes.
+5. **Wait for review.** Neil will review your PR and may request changes.
+6. **The PR does not get merged.** On approval it's closed without merging — it's your record of having completed A4, not something that lands on `main`. Merging would ship your working `dead_reckoning_node.py`/`ekf_node.py` as the template, handing the answer to every student who clones this repo afterward.
