@@ -23,10 +23,10 @@ fi
 # ---------------------------------------------------------------------------
 if [ -n "${TS_AUTHKEY:-}" ]; then
   if command -v tailscale >/dev/null 2>&1; then
-    echo "[a4] Joining MFE tailnet as '${GITHUB_USER:-a4-member}'..."
+    echo "[a4] Joining MFE tailnet as '${GITHUB_USER:-a2-member}'..."
     tailscale up \
       --authkey="${TS_AUTHKEY}" \
-      --hostname="${GITHUB_USER:-a4-member}" \
+      --hostname="${GITHUB_USER:-a2-member}" \
       --accept-routes 2>&1 || true
     echo "[a4] Tailscale: $(tailscale status --peers=false 2>&1 | head -1)"
   else
@@ -49,7 +49,15 @@ else
   export A4_NETIF="${A4_NETIF:-eth0}"
 fi
 
+NEIL_IP="${A4_NEIL_HOST:-100.127.203.84}"
+
+# Set CycloneDDS config as inline XML so env vars expand correctly.
+# Point discovery unicast at Neil's Tailscale IP — packets route through
+# tailscale0 automatically when the interface exists.
+export CYCLONEDDS_URI="<CycloneDDS><Domain><Discovery><Peers><Peer address=\"${NEIL_IP}\"/></Peers></Discovery></Domain></CycloneDDS>"
+
 echo "[a4] ROS_DOMAIN_ID=${ROS_DOMAIN_ID}  RMW=${RMW_IMPLEMENTATION}  NETIF=${A4_NETIF}"
+echo "[a4] DDS peer → ${NEIL_IP}"
 if [ -n "${GITHUB_USER:-}" ]; then
   echo "[a4] GITHUB_USER=${GITHUB_USER}  →  your ROS namespace is /${GITHUB_USER}"
 fi
