@@ -262,23 +262,11 @@ The scenario constants (sensor rates, noise sigmas, trajectory shape, grader thr
 - **Solution side** — [`ros2_ws/src/a4_new_member/config/params.yaml`](ros2_ws/src/a4_new_member/config/params.yaml)
   - EKF tuning: `initial_pos_cov`, `initial_yaw_cov`, `initial_v_cov`, `q_accel`, `q_yaw_rate`, `r_gps`. These are HINTS you can tune — the defaults are a reasonable starting point.
 
-The launch files (`neil.launch.py`, `dr.launch.py`, `ekf.launch.py`, `bringup.launch.py`) pass the YAML file into each node via the `parameters=[...]` argument, so `ros2 launch` picks them up automatically.
+The launch files (`neil.launch.py`, `dr.launch.py`, `ekf.launch.py`) pass the YAML file into each node via the `parameters=[...]` argument, so `ros2 launch` picks them up automatically.
 
 ---
 
-## 9. Composed launch
-
-If you want to run the whole stack (Neil sensor sim + grader + your DR + your EKF) in one command — useful when hacking offline without Tailscale — use the composed launch:
-
-```bash
-ros2 launch a4_new_member bringup.launch.py github_user:=<your-handle>
-```
-
-This includes Neil's launch file (unnamespaced, so `/neil/imu`, `/neil/gps`, `/neil/truth`, `/neil/feedback` stay where the grader expects them) and both `dead_reckoning_node` + `ekf_node` under `PushRosNamespace(<your-handle>)`. For the real graded run over Tailscale you should still use `ros2 launch a4_new_member dr.launch.py` / `ekf.launch.py` and let Neil's process own the Neil side.
-
----
-
-## 10. Submitting via Pull Request
+## 9. Submitting via Pull Request
 
 Follow this flow to submit your work:
 
