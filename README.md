@@ -60,7 +60,7 @@ source install/setup.bash
 **Goal:** integrate the IMU to publish an estimated pose on `/${GITHUB_USER}/odom_dr` (`nav_msgs/Odometry`, frame `map`). Then watch it drift.
 
 ### 2.1 The physics
-The vehicle starts **at rest at the origin with heading = 0**. The IMU publishes body-frame forward acceleration and yaw rate:
+Your node needs a starting fix before it can integrate blind — that's true of any real dead-reckoning system. `dead_reckoning_node.py` gets one for you already: it seeds its initial `(x, y, theta, v)` from the *first* `/neil/truth` message it receives, then stops listening to truth entirely. Everything after that is pure IMU integration — this one-time seed isn't the same thing as continuous correction (that's what A4.2's EKF does). The IMU publishes body-frame forward acceleration and yaw rate:
 
 ```
 a_body_x = msg.linear_acceleration.x   # forward accel, m/s^2
@@ -86,6 +86,11 @@ Open `ros2_ws/src/a4_new_member/a4_new_member/dead_reckoning_node.py`. There's a
 colcon build --symlink-install
 source install/setup.bash
 ros2 launch a4_new_member dr.launch.py github_user:=$GITHUB_USER
+```
+
+Watch your verdict from another terminal. `/neil/feedback` is shared by every student on the tailnet, so filter to your own handle:
+```bash
+ros2 topic echo /neil/feedback | grep --line-buffered "$GITHUB_USER"
 ```
 
 ### 2.4 How A4.1 grading works
@@ -157,6 +162,13 @@ source install/setup.bash
 ros2 launch a4_new_member ekf.launch.py github_user:=$GITHUB_USER
 ```
 
+Use `ros2 launch`, not `ros2 run a4_new_member ekf_node` directly — only the launch file passes `config/params.yaml` in. Run the node directly and every tuning knob below silently falls back to the hardcoded defaults in `ekf_node.py`'s `declare_parameter(...)` calls, so your `params.yaml` edits won't do anything and you'll be stuck wondering why tuning isn't changing your results.
+
+Watch your verdict from another terminal, filtered to your own handle (same as A4.1):
+```bash
+ros2 topic echo /neil/feedback | grep --line-buffered "$GITHUB_USER"
+```
+
 ### 3.5 How A4.2 grading works
 The grader:
 1. Buffers `/neil/truth`.
@@ -171,9 +183,19 @@ The grader:
    Sorry <your-github-user>, the answer is incorrect (RMSE_EKF=1.847 m)
    ```
 
-Feedback is only republished when your verdict flips, so if your filter is wrong you'll see one "incorrect" message per attempt.
+Feedback is republished on every grading tick (~every 2s) while your `/odom` topic is live, so it always reflects your current state.
 
-### 3.6 Theory refs
+### 3.6 Tuning guidance
+
+If your predict/update math is correct but RMSE won't drop under 0.5 m, that's very likely a tuning problem, not a bug — worth checking before you keep debugging the math itself. The knobs that matter, and which direction to move them:
+
+- **`q_accel` / `q_yaw_rate`** (process noise) are the main lever. These control how much the filter trusts its own IMU-predicted motion vs. incoming GPS corrections. Too large, and the filter tracks each raw noisy GPS fix almost directly — you inherit GPS's own measurement noise as your error floor, since you're not really averaging anything. Too small, and the filter barely updates from GPS at all, drifting like uncorrected dead-reckoning (A4.1) between fixes. There's a real sweet spot in between, not a "smaller is always better" relationship — pushing these very small does *not* approach zero error, it approaches A4.1's drift problem again.
+- **`initial_yaw_cov` / `initial_v_cov`** matter mainly in the first second or two after your node starts: a single GPS fix tells you nothing about heading or speed, so if these start too small the filter will be overconfident about the (probably wrong) heading/speed it started with, and will correct slowly.
+- **`r_gps`** should stay matched to the real GPS noise (`0.5 m` sigma → `0.25` variance) — this represents an actual physical sensor property, not a free tuning knob. Changing it to something that doesn't match reality is telling the filter to believe a false story about how noisy its GPS actually is.
+
+A reasonable way to search: hold `initial_*` and `r_gps` at their shipped values, and try `q_accel`/`q_yaw_rate` a few factors below the defaults — watch whether RMSE drops toward 0.5m or starts flattening out/getting noisier, and adjust from there.
+
+### 3.7 Theory refs
 - Wikipedia — [Extended Kalman filter](https://en.wikipedia.org/wiki/Extended_Kalman_filter).
 - Thrun, Burgard, Fox — *Probabilistic Robotics*, Chapter 3 (Gaussian filters). The EKF derivation in §3.3 is exactly what you'll implement.
 - Roger Labbe — [Kalman and Bayesian Filters in Python](https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python), free notebooks. Chapter 11 is the EKF.
