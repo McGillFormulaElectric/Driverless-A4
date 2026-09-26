@@ -1,6 +1,6 @@
 """A4.1 — dead-reckoning pose estimator (IMU-only).
 
-Subscribes to /neil/imu (sensor_msgs/Imu) and integrates the body-frame
+Subscribes to /grader/imu (sensor_msgs/Imu) and integrates the body-frame
 forward acceleration (`linear_acceleration.x`) and yaw rate
 (`angular_velocity.z`) into a 2D pose on `<namespace>/odom_dr`
 (nav_msgs/Odometry, frame `map`).
@@ -12,7 +12,7 @@ the integration right. A4.2 is where you fix the drift with an EKF.
 Trajectory contract (see README):
     - Like any real dead-reckoning system, you need a starting fix before
       you can integrate blind. This node seeds its initial (x, y, theta, v)
-      from the *first* /neil/truth message it receives, then stops
+      from the *first* /grader/truth message it receives, then stops
       listening to truth entirely — everything after that is pure IMU
       integration. That one-time seed is not the same thing as continuous
       correction; continuous fusion is what A4.2's EKF does instead.
@@ -45,13 +45,13 @@ class DeadReckoningNode(Node):
         super().__init__('dead_reckoning_node')
 
         self.sub = self.create_subscription(
-            Imu, '/neil/imu', self._on_imu, RELIABLE_QOS
+            Imu, '/grader/imu', self._on_imu, RELIABLE_QOS
         )
         self.pub = self.create_publisher(Odometry, 'odom_dr', RELIABLE_QOS)
 
         # Initial state — seeded from the vehicle's actual position/heading/
         # speed the moment we start tracking (see _on_truth). Not assumed
-        # to be the origin: /neil/truth has been running continuously since
+        # to be the origin: /grader/truth has been running continuously since
         # the grader booted, so "start at rest at the origin" would only be
         # literally true for whoever connects in the first instant.
         self._x = 0.0
@@ -60,7 +60,7 @@ class DeadReckoningNode(Node):
         self._v = 0.0
         self._seeded = False
         self._truth_sub = self.create_subscription(
-            Odometry, '/neil/truth', self._on_truth, RELIABLE_QOS
+            Odometry, '/grader/truth', self._on_truth, RELIABLE_QOS
         )
 
         # Previous IMU header stamp (seconds) for computing dt.
@@ -68,12 +68,12 @@ class DeadReckoningNode(Node):
 
         ns = self.get_namespace()
         self.get_logger().info(
-            f'Dead-reckoning from /neil/imu -> {ns}/odom_dr (map frame). '
+            f'Dead-reckoning from /grader/imu -> {ns}/odom_dr (map frame). '
             'Expect drift; A4.1 grader only scores the first 10 s.'
         )
 
     def _on_truth(self, msg: Odometry) -> None:
-        """One-shot seed of our starting pose from /neil/truth. After this
+        """One-shot seed of our starting pose from /grader/truth. After this
         we never look at truth again — everything from here on is pure IMU
         dead-reckoning."""
         if self._seeded:

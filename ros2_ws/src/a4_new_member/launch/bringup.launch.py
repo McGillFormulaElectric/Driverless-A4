@@ -1,7 +1,7 @@
 """Composed bring-up: Neil stack + new_member DR + new_member EKF nodes.
 
 Includes:
-  - a4_neil/neil.launch.py       (NOT namespaced — it owns /neil/*)
+  - a4_neil/neil.launch.py       (NOT namespaced — it owns /grader/*)
   - a4_new_member/dr.launch.py     (pushed under /<github_user>)
   - a4_new_member/ekf.launch.py    (pushed under /<github_user>)
 
@@ -32,8 +32,8 @@ def generate_launch_description():
     )
 
     neil_group = GroupAction([
-        # Neil publishes on absolute topics (/neil/imu, /neil/gps,
-        # /neil/truth, /neil/feedback) and must NOT be namespaced.
+        # Neil publishes on absolute topics (/grader/imu, /grader/gps,
+        # /grader/truth, /grader/feedback) and must NOT be namespaced.
         IncludeLaunchDescription(PythonLaunchDescriptionSource(neil_launch)),
     ])
 

@@ -150,13 +150,13 @@ class EkfNode(Node):
             r_gps=float(self.get_parameter('r_gps').value),
         )
 
-        self.create_subscription(Imu, '/neil/imu', self._on_imu, RELIABLE_QOS)
-        self.create_subscription(PoseStamped, '/neil/gps', self._on_gps, RELIABLE_QOS)
+        self.create_subscription(Imu, '/grader/imu', self._on_imu, RELIABLE_QOS)
+        self.create_subscription(PoseStamped, '/grader/gps', self._on_gps, RELIABLE_QOS)
         self.pub = self.create_publisher(Odometry, 'odom', RELIABLE_QOS)
 
         # EKF.x starts at [0,0,0,0] (see EKF.__init__) — like
         # dead_reckoning_node, we need a real starting fix before predict()
-        # means anything, since /neil/gps has been running since the grader
+        # means anything, since /grader/gps has been running since the grader
         # booted and is nowhere near the origin by the time we connect. The
         # first GPS fix seeds position directly (heading/speed unknown from
         # position alone, so those start at 0 and the filter refines them
@@ -168,7 +168,7 @@ class EkfNode(Node):
 
         ns = self.get_namespace()
         self.get_logger().info(
-            f'EKF fusing /neil/imu + /neil/gps -> {ns}/odom (map frame).'
+            f'EKF fusing /grader/imu + /grader/gps -> {ns}/odom (map frame).'
         )
 
     def _on_imu(self, msg: Imu) -> None:
