@@ -1,13 +1,13 @@
-# MFE Driverless — Assignment 4: 2D pose estimation with an EKF
+# MFE Driverless — Assignment 4: ROS 2 pub / sub with Local Grading
 
-This assignment teaches **sensor fusion for vehicle pose estimation**: you take a noisy IMU and a noisy GPS, and you produce a clean estimate of where the car is and where it is pointing. It is split into two parts, [Advent-of-Code style](https://adventofcode.com/): Part 1 is a warm-up, Part 2 is the real challenge.
+This assignment introduces ROS 2 publishers, subscribers, namespaces, and DDS discovery. It is split into two parts: Part 1 is a warm-up, Part 2 is the real challenge.
 
-- **A4.1** — dead-reckoning from IMU only. Watch it drift. This is the "why we need fusion" demo.
-- **A4.2** — implement a 2D Extended Kalman Filter that fuses IMU (predict) with GPS (update) and stays within 0.5 m RMSE of the truth.
+- **A4.1** — publish `Hello World!` on your own namespaced topic.
+- **A4.2** — subscribe to a noisy signal, filter it with a first-order IIR low-pass filter, and publish your filtered output. The grader runs locally alongside your code and auto-discovers your topic, reporting back on `/neil/feedback` whether you got it right.
 
-Neil's node drives a virtual vehicle around a figure-8-shaped trajectory (two lobes of radius ~8 m) and publishes noisy IMU + noisy GPS + noise-free ground truth. Your job is to publish an odometry estimate that Neil's grader can compare against truth. The grader auto-discovers your topics on the shared class network and posts pass/fail verdicts on `/neil/feedback`.
+Everything runs inside a Docker container using `docker-compose-local.yml`.
 
-Everything runs inside a Docker container so your local OS and Python version don't matter.
+> **Grading Setup** — The grader runs as a local Docker service alongside your student code. Both use host networking and ROS domain ID 42 for automatic DDS discovery.
 
 ---
 
@@ -20,30 +20,26 @@ Everything runs inside a Docker container so your local OS and Python version do
 
 ```bash
 git clone <repo-url>
-cd Driverless-A4
+cd Driverless-AA4
 git checkout <FirstNameLastName>
 ```
 
-### 1.2 Tailscale (class VPN)
-Neil runs a ROS 2 node on the class Tailscale network. Every student joins the same tailnet so DDS discovery works between machines.
-
-1. Install Tailscale: <https://tailscale.com/download>.
-2. `sudo tailscale up` and sign in with the invite Neil sent.
-3. Verify you can reach Neil's node: `tailscale ping neil`.
-4. Note your own Tailscale hostname/IP — you'll set it via env var below if auto-detection fails.
-
-### 1.3 Docker
-Linux host with Docker + Docker Compose is the supported path (host networking + Tailscale interface work cleanly).
+### 1.2 Docker & Local Grading
+The grader runs as a local service inside Docker alongside your student code. Both use host networking and ROS domain ID 42 for automatic DDS discovery.
 
 ```bash
 cd docker
-export GITHUB_USER=<your-github-handle>          # required
-export A4_NEIL_HOST=<neil tailnet host>          # e.g. neil.tail1234.ts.net
-docker compose build
-docker compose run --rm new_member
+docker compose -f docker-compose-local.yml build
+docker compose -f docker-compose-local.yml up -d
 ```
 
-Inside the container you'll have `/workspace` mounted to `ros2_ws/`. Build and source:
+This starts two services:
+1. **student** — your code (subscriber + publisher)
+2. **grader** — reference implementation (signal publisher + grader)
+
+Both services share the same network and ROS domain, so topics auto-discover via DDS.
+
+Inside either container, the workspace is mounted at `/workspace` (your `ros2_ws`). Build and source:
 
 ```bash
 cd /workspace
@@ -51,166 +47,108 @@ colcon build --symlink-install
 source install/setup.bash
 ```
 
-> **macOS/Windows caveat:** Docker Desktop's `network_mode: host` is limited. If you're not on Linux, run the container with `--network host` on a Linux VM, or use Tailscale's [userspace networking mode](https://tailscale.com/kb/1112/userspace-networking) inside the container. Ask Neil for the current recommendation.
+View logs from either service:
+```bash
+docker compose -f docker-compose-local.yml logs student -f  # tail student logs
+docker compose -f docker-compose-local.yml logs grader -f   # tail grader logs
+docker compose -f docker-compose-local.yml logs             # both services
+```
+
+Stop everything:
+```bash
+docker compose -f docker-compose-local.yml down
+```
 
 ---
 
-## 2. A4.1 — Dead-reckoning warm-up
+## 2. A4.1 — Hello World! (warm-up)
 
-**Goal:** integrate the IMU to publish an estimated pose on `/${GITHUB_USER}/odom_dr` (`nav_msgs/Odometry`, frame `map`). Then watch it drift.
+**Goal:** publish the string `Hello World!` on `/${GITHUB_USER}/hello` at 1 Hz.
 
-### 2.1 The physics
-Your node needs a starting fix before it can integrate blind — that's true of any real dead-reckoning system. `dead_reckoning_node.py` gets one for you already: it seeds its initial `(x, y, theta, v)` from the *first* `/neil/truth` message it receives, then stops listening to truth entirely. Everything after that is pure IMU integration — this one-time seed isn't the same thing as continuous correction (that's what A4.2's EKF does). The IMU publishes body-frame forward acceleration and yaw rate:
+Open `ros2_ws/src/a4_new_member/a4_new_member/hello_publisher.py`. The node, publisher, and timer are already wired up — there's a `TODO` block inside `_tick` where you build and publish a `std_msgs/String`. If you're new to ROS 2 publishers, see the [ROS2 Industrial Workshop — Simple Publisher/Subscriber](https://ros2-industrial-workshop.readthedocs.io/en/latest/_source/basics/ROS2-Simple-Publisher-Subscriber.html). Then launch it with your GitHub username as the ROS namespace:
 
-```
-a_body_x = msg.linear_acceleration.x   # forward accel, m/s^2
-omega_z  = msg.angular_velocity.z      # yaw rate, rad/s
-```
-
-Semi-implicit Euler integration:
-
-```
-theta_new = theta + omega_z * dt
-v_new     = v + a_body_x * dt
-x_new     = x + v_new * cos(theta_new) * dt
-y_new     = y + v_new * sin(theta_new) * dt
-```
-
-`dt` should come from the difference between consecutive IMU header timestamps — do **not** use wall-clock time, since Neil stamps everything with simulated time (this is what makes grading reproducible).
-
-### 2.2 Where to put your code
-Open `ros2_ws/src/a4_new_member/a4_new_member/dead_reckoning_node.py`. There's a `TODO(student)` block inside `_on_imu`. Replace the stub with the integration above.
-
-### 2.3 Run it
 ```bash
-colcon build --symlink-install
-source install/setup.bash
-ros2 launch a4_new_member dr.launch.py github_user:=$GITHUB_USER
+ros2 launch a4_new_member hello.launch.py github_user:=$GITHUB_USER
 ```
 
-Watch your verdict from another terminal. `/neil/feedback` is shared by every student on the tailnet, so filter to your own handle:
+Neil's grader is watching for any topic matching `/<user>/hello` (type `std_msgs/String`). When it sees `Hello World!` from your namespace, it will publish on `/neil/feedback`:
+
+```
+Hello <your-github-user>
+```
+
+Watch the feedback live from another terminal (inside the container). `/neil/feedback` is shared by every student on the tailnet, so once the class is connected simultaneously you'll want to filter to just your own handle:
 ```bash
 ros2 topic echo /neil/feedback | grep --line-buffered "$GITHUB_USER"
 ```
+(Drop the `grep` to see everyone's verdicts — useful for confirming the grader is alive at all.)
 
-### 2.4 How A4.1 grading works
-Pure dead-reckoning drifts fast because you are double-integrating IMU noise, so the grader only scores your stream over the **first 10 s of sim time** and passes at RMSE < 5.0 m. That is generous by design — if your integration is correct you will comfortably pass. If your integration is wrong (e.g. you forgot to project velocity onto heading, or you're using wall-clock instead of header stamps), you will fail even the 10 s window.
-
-**Deliverable for A4.1:** screenshot of `/neil/feedback` congratulating your handle, committed as `submissions/a4_1_feedback.png`, plus your finished `dead_reckoning_node.py`.
+**Deliverable for A4.1:** a screenshot of `/neil/feedback` congratulating your GitHub handle, committed to your branch under `submissions/a4_1_feedback.png`.
 
 ---
 
-## 3. A4.2 — 2D Extended Kalman Filter
+## 3. A4.2 — Low-pass filter Neil's signal
 
-**Goal:** publish a fused pose estimate on `/${GITHUB_USER}/odom` (`nav_msgs/Odometry`, frame `map`) that stays within **0.5 m RMSE** of the ground truth over any recent 200-sample window (~4 s at 50 Hz).
-
-### 3.1 State and models
-State vector:
+Neil publishes a deterministic-but-noisy waveform on `/neil/signal` (`std_msgs/Float32`):
 
 ```
-x = [px, py, theta, v]^T
+x(t) = 1.0 * sin(2π * 0.5 * t) + 0.6 * sin(2π * 5.0 * t) + N(0, 0.3²)
 ```
 
-Non-linear motion model (used in **predict**, driven by IMU at 50 Hz):
+Your job is to **subscribe** to it, apply a **first-order IIR low-pass filter**, and **publish** the filtered value on `/${GITHUB_USER}/answer` (`std_msgs/Float32`).
+
+### The filter (exact spec — do not change α)
 
 ```
-px'    = px + v * cos(theta) * dt
-py'    = py + v * sin(theta) * dt
-theta' = theta + omega_z * dt
-v'     = v + a_body_x * dt
+y[n] = α · x[n] + (1 − α) · y[n − 1]
+y[0] = x[0]
+α    = 0.1
 ```
 
-Motion Jacobian evaluated at the current estimate:
+This is the same "exponential moving average" you'll see in most sensor pipelines. Theory refs:
+- Wikipedia — [Infinite impulse response](https://en.wikipedia.org/wiki/Infinite_impulse_response) and [Exponential smoothing](https://en.wikipedia.org/wiki/Exponential_smoothing).
+- Smith, *The Scientist and Engineer's Guide to DSP*, [Ch. 19 — Recursive Filters](https://www.dspguide.com/ch19.htm) (free online).
 
-```
-F = [[1, 0, -v*sin(theta)*dt, cos(theta)*dt],
-     [0, 1,  v*cos(theta)*dt, sin(theta)*dt],
-     [0, 0,  1,               0            ],
-     [0, 0,  0,               1            ]]
-```
+### Where to put your code
+Open `ros2_ws/src/a4_new_member/a4_new_member/lpf_node.py`. There's a `TODO` block inside `_on_signal`. Replace the stub with the IIR recurrence above.
 
-Measurement model (used in **update**, driven by GPS at 5 Hz):
-
-```
-z = [px_meas, py_meas]^T
-H = [[1, 0, 0, 0],
-     [0, 1, 0, 0]]
-```
-
-### 3.2 Sensor noise (matches the sim; use these to seed R)
-| Sensor            | Field                    | Sigma      |
-| ----------------- | ------------------------ | ---------- |
-| IMU forward accel | `linear_acceleration.x`  | 0.2 m/s²   |
-| IMU yaw rate      | `angular_velocity.z`     | 0.02 rad/s |
-| GPS position      | `pose.position.{x,y}`    | 0.5 m each |
-
-A reasonable starting point for the EKF tuning constants (these are the defaults in `a4_new_member/config/params.yaml`; feel free to tune):
-
-```
-Q = diag([0.01, 0.01, 0.001, 0.1])     # process noise
-R = diag([0.5**2, 0.5**2])             # measurement noise, matches GPS sigma
-P0 = diag([0.01, 0.01, 0.001, 0.01])   # small: we know we start at rest at origin
-```
-
-### 3.3 Where to put your code
-Open `ros2_ws/src/a4_new_member/a4_new_member/ekf_node.py`. There is a plain-numpy `EKF` class with `predict()` and `update_gps()`. The ROS node calls them for you; you just have to fill in the math.
-
-### 3.4 Run it
+### Run it
 ```bash
 colcon build --symlink-install
 source install/setup.bash
-ros2 launch a4_new_member ekf.launch.py github_user:=$GITHUB_USER
+ros2 launch a4_new_member lpf.launch.py github_user:=$GITHUB_USER
 ```
 
-Use `ros2 launch`, not `ros2 run a4_new_member ekf_node` directly — only the launch file passes `config/params.yaml` in. Run the node directly and every tuning knob below silently falls back to the hardcoded defaults in `ekf_node.py`'s `declare_parameter(...)` calls, so your `params.yaml` edits won't do anything and you'll be stuck wondering why tuning isn't changing your results.
+Watch your verdict the same way as A4.1 (see §2) — `ros2 topic echo /neil/feedback | grep --line-buffered "$GITHUB_USER"` in another terminal.
 
-Watch your verdict from another terminal, filtered to your own handle (same as A4.1):
-```bash
-ros2 topic echo /neil/feedback | grep --line-buffered "$GITHUB_USER"
-```
-
-### 3.5 How A4.2 grading works
-The grader:
-1. Buffers `/neil/truth`.
-2. Discovers any `/<user>/odom` topic on the network and buffers the last 200 samples per student.
-3. Matches each student sample to truth by **nearest header stamp** (both are on simulated time so this is exact).
-4. Computes 2D position RMSE. If `RMSE < 0.5 m` it publishes on `/neil/feedback`:
+### How grading works
+Neil's grader:
+1. Subscribes to `/neil/signal` and runs **the same** LPF (α = 0.1, y[0] = x[0]) to build a reference sequence.
+2. Discovers any `/<user>/answer` topic on the network and buffers the last 200 samples per student.
+3. Matches student samples to the reference by nearest receive-time and computes MSE.
+4. If MSE < 0.02, publishes on `/neil/feedback`:
    ```
-   Congrats <your-github-user>, the answer is correct (RMSE_EKF=0.312 m)
+   Congratulations <your-github-user> you got the correct LPF value
    ```
    Otherwise:
    ```
-   Sorry <your-github-user>, the answer is incorrect (RMSE_EKF=1.847 m)
+   Sorry <your-github-user>, the answer is incorrect (MSE=0.4127)
    ```
 
-Feedback is republished on every grading tick (~every 2s) while your `/odom` topic is live, so it always reflects your current state.
+Feedback is republished on every grading tick (~every 2s) while your `/answer` topic is live, so it always reflects your current state — fix your filter and you'll see it flip to "correct" without needing to restart anything.
 
-### 3.6 Tuning guidance
-
-If your predict/update math is correct but RMSE won't drop under 0.5 m, that's very likely a tuning problem, not a bug — worth checking before you keep debugging the math itself. The knobs that matter, and which direction to move them:
-
-- **`q_accel` / `q_yaw_rate`** (process noise) are the main lever. These control how much the filter trusts its own IMU-predicted motion vs. incoming GPS corrections. Too large, and the filter tracks each raw noisy GPS fix almost directly — you inherit GPS's own measurement noise as your error floor, since you're not really averaging anything. Too small, and the filter barely updates from GPS at all, drifting like uncorrected dead-reckoning (A4.1) between fixes. There's a real sweet spot in between, not a "smaller is always better" relationship — pushing these very small does *not* approach zero error, it approaches A4.1's drift problem again.
-- **`initial_yaw_cov` / `initial_v_cov`** matter mainly in the first second or two after your node starts: a single GPS fix tells you nothing about heading or speed, so if these start too small the filter will be overconfident about the (probably wrong) heading/speed it started with, and will correct slowly.
-- **`r_gps`** should stay matched to the real GPS noise (`0.5 m` sigma → `0.25` variance) — this represents an actual physical sensor property, not a free tuning knob. Changing it to something that doesn't match reality is telling the filter to believe a false story about how noisy its GPS actually is.
-
-A reasonable way to search: hold `initial_*` and `r_gps` at their shipped values, and try `q_accel`/`q_yaw_rate` a few factors below the defaults — watch whether RMSE drops toward 0.5m or starts flattening out/getting noisier, and adjust from there.
-
-### 3.7 Theory refs
-- Wikipedia — [Extended Kalman filter](https://en.wikipedia.org/wiki/Extended_Kalman_filter).
-- Thrun, Burgard, Fox — *Probabilistic Robotics*, Chapter 3 (Gaussian filters). The EKF derivation in §3.3 is exactly what you'll implement.
-- Roger Labbe — [Kalman and Bayesian Filters in Python](https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python), free notebooks. Chapter 11 is the EKF.
-
-**Deliverable for A4.2:** screenshot of `/neil/feedback` congratulating your handle, committed as `submissions/a4_2_feedback.png`, plus your finished `ekf_node.py`.
+**Deliverable for A4.2:** screenshot of `/neil/feedback` congratulating your handle (MSE value visible), committed as `submissions/a4_2_feedback.png`, plus your finished `lpf_node.py`.
 
 ---
 
 ## 4. Visualizing with Foxglove Studio (optional but strongly recommended)
 
-Seeing your estimate, the noisy GPS, and the ground truth on the same 2D plot makes it obvious when your filter is off.
+Seeing the raw signal and your filtered signal on the same plot makes it obvious what your filter is doing wrong.
 
 ### 4.1 Install the Foxglove bridge inside the container
 Already available in the image:
 ```bash
+apt-get install -y ros-humble-foxglove-bridge   # only if you rebuild the image
 ros2 run foxglove_bridge foxglove_bridge port:=8765
 ```
 Leave that terminal running.
@@ -221,14 +159,12 @@ Download from <https://foxglove.dev/download> (free, works on Linux/macOS/Window
 ### 4.3 Connect
 1. Open Foxglove Studio → **Open connection…** → **Foxglove WebSocket**.
 2. URL: `ws://localhost:8765` (or `ws://<your-tailscale-host>:8765` from another machine on the tailnet).
-3. Add a **3D** panel and enable these topics:
-   - `/neil/truth` (green — ground truth path).
-   - `/neil/gps` (red dots — noisy GPS).
-   - `/${GITHUB_USER}/odom_dr` (yellow — drifting DR estimate).
-   - `/${GITHUB_USER}/odom` (blue — your EKF estimate).
+3. Add a **Plot** panel.
+   - Series 1: topic `/neil/signal`, path `data`, color red.
+   - Series 2: topic `/${GITHUB_USER}/answer`, path `data`, color green.
 4. Add a **Raw Messages** panel on `/neil/feedback` to see verdicts as they arrive.
 
-You should see the yellow (DR) trace wander off within a few seconds while the blue (EKF) trace stays glued to the green (truth) trace. That is your filter working.
+You should see the green (filtered) curve tracking the low-frequency component of the red (noisy) signal while attenuating the 5 Hz sinusoid — that's the LPF working.
 
 > Tip: save your Foxglove layout to `submissions/a4_layout.json` (**Layout → Export**) so future assignments can reuse it.
 
@@ -236,78 +172,88 @@ You should see the yellow (DR) trace wander off within a few seconds while the b
 
 ## 5. Topic contract (summary)
 
-| Topic                    | Type                        | Owner   | Purpose                                         |
-| ------------------------ | --------------------------- | ------- | ----------------------------------------------- |
-| `/neil/imu`              | `sensor_msgs/Imu`           | Neil    | Noisy IMU (50 Hz)                               |
-| `/neil/gps`              | `geometry_msgs/PoseStamped` | Neil    | Noisy GPS (5 Hz)                                |
-| `/neil/truth`            | `nav_msgs/Odometry`         | Neil    | Noise-free ground truth (50 Hz)                 |
-| `/neil/feedback`         | `std_msgs/String`           | Neil    | Per-student grading verdict                     |
-| `/<user>/odom_dr`        | `nav_msgs/Odometry`         | Student | A4.1 dead-reckoning output                      |
-| `/<user>/odom`           | `nav_msgs/Odometry`         | Student | A4.2 EKF output                                 |
-
-All topics use `QoSProfile(reliability=RELIABLE, history=KEEP_LAST, depth=10)`. All frames are `map`. Namespaces are set at launch with `github_user:=<handle>`.
+| Topic              | Type              | Owner   | Purpose                            |
+| ------------------ | ----------------- | ------- | ---------------------------------- |
+| `/neil/signal`     | `std_msgs/Float32` | Neil    | Noisy input for A4.2               |
+| `/neil/feedback`   | `std_msgs/String`  | Neil    | Per-student grading verdict        |
+| `/<user>/hello`    | `std_msgs/String`  | Student | A4.1 output                        |
+| `/<user>/answer`   | `std_msgs/Float32` | Student | A4.2 output (your filtered signal) |
 
 ---
 
 ## 6. Layout
 
 ```
-Driverless-A4/
-├── .github/workflows/       # CI (colcon build + test on Humble)
-├── docker/                  # Dockerfile, compose, CycloneDDS config, entrypoint
+Driverless-AA4/
+├── docker/
+│   ├── docker-compose-local.yml  # Two services: student + grader
+│   ├── Dockerfile                # ROS2 Humble + dependencies
+│   ├── entrypoint.sh             # Startup script (socket buffer config)
+│   └── cyclonedds.xml            # DDS discovery config
 ├── ros2_ws/
 │   └── src/
-│       ├── a4_new_member/     # your template — this is where you write code
-│       └── a4_neil/         # for reference; not run by students
+│       ├── a4_new_member/        # your template — write code here
+│       └── a4_grader/            # grader (runs as local service in docker-compose)
+│           ├── a4_grader/        # Python package
+│           ├── config/           # params.yaml
+│           ├── launch/           # neil.launch.py
+│           ├── setup.py
+│           └── package.xml
 └── README.md
 ```
 
 ## 7. Troubleshooting
 
-- **`ros2 topic list` doesn't show `/neil/imu`.** DDS discovery isn't reaching Neil. Confirm `tailscale ping <neil-host>` works, `A4_NEIL_HOST` is set, and `ROS_DOMAIN_ID` matches (`42`).
+- **`ros2 topic list` doesn't show `/neil/signal`.** DDS discovery isn't reaching Neil. Confirm `tailscale ping <neil-host>` works, that `A2_NEIL_HOST` is set, and that `ROS_DOMAIN_ID` matches (`42`).
 - **You see your own topics but no one else's.** Check `RMW_IMPLEMENTATION=rmw_cyclonedds_cpp` inside the container (`env | grep RMW`).
-- **DR fails even though the code looks right.** Two common bugs: (1) computing `dt` from `time.time()` instead of `msg.header.stamp` — Neil uses simulated time; (2) updating position with `v_old * cos(theta_new)` when semi-implicit Euler wants `v_new * cos(theta_new)`.
-- **EKF passes briefly then diverges.** Your `Q` is probably too small — the filter over-trusts its motion model and ignores GPS corrections. Try increasing the diagonal of `Q`, especially on `v` and `theta`.
-- **EKF never converges.** Your covariance update or Jacobian sign is likely wrong. Double-check `F[0, 2] = -v*sin(theta)*dt` (note the minus).
+- **Grader keeps saying incorrect.** Confirm α = 0.1, that you initialise `y[0] = x[0]` (not zero), and that you're publishing on `/<GITHUB_USER>/answer` (not `~answer` or `/answer`).
 
 ---
 
-## 8. Parameters
+## 8. Submitting via Pull Request
 
-The scenario constants (sensor rates, noise sigmas, trajectory shape, grader thresholds, EKF tuning) are exposed as ROS parameters and loaded from YAML at launch time. You should not need to edit the Neil-side file for the graded assignment, but tweaking the new_member-side EKF knobs is exactly how you tune your filter (or, for the graded run, exactly how you keep the defaults sane).
+Committing screenshots to `submissions/` on your branch is only half the workflow. The class repo uses pull requests + review for every landed change, and this assignment is your first practice PR. Follow these steps end-to-end.
 
-- **Neil side** — [`ros2_ws/src/a4_neil/config/params.yaml`](ros2_ws/src/a4_neil/config/params.yaml)
-  - `sensor_sim_node`: `imu_hz`, `gps_hz`, `imu_accel_sigma`, `imu_yaw_rate_sigma`, `gps_pos_sigma`, `seed`, trajectory (`v_ss`, `tau_ramp`, `omega_max`, `traj_period`).
-  - `grader`: `dr_rmse_threshold`, `dr_window_s`, `ekf_rmse_threshold`, `match_window`, `discovery_period_s`, `grade_period_s`.
-- **Solution side** — [`ros2_ws/src/a4_new_member/config/params.yaml`](ros2_ws/src/a4_new_member/config/params.yaml)
-  - EKF tuning: `initial_pos_cov`, `initial_yaw_cov`, `initial_v_cov`, `q_accel`, `q_yaw_rate`, `r_gps`. These are HINTS you can tune — the defaults are a reasonable starting point.
-
-The launch files (`neil.launch.py`, `dr.launch.py`, `ekf.launch.py`) pass the YAML file into each node via the `parameters=[...]` argument, so `ros2 launch` picks them up automatically.
-
----
-
-## 9. Submitting via Pull Request
-
-Follow this flow to submit your work:
-
-1. **Commit** your changes to your `FirstNameLastName` branch. Include both feedback screenshots in `submissions/`:
-   - `submissions/a4_1_feedback.png` — a screenshot of `/neil/feedback` congratulating your handle for A4.1.
-   - `submissions/a4_2_feedback.png` — a screenshot of `/neil/feedback` congratulating your handle for A4.2.
-2. **Push** the branch to GitHub:
+1. Push your `FirstNameLastName` branch to GitHub:
    ```bash
-   git push -u origin <FirstNameLastName>
+   git push -u origin FirstNameLastName
    ```
-3. **Open a pull request** against `main`. Title it exactly:
-   ```
-   A4 submission — <Your Name>
-   ```
-4. **Embed both screenshots inline in the PR description** so the reviewer can see the verdicts without cloning:
-   ```markdown
-   ### A4.1 dead-reckoning
-   ![A4.1 feedback](submissions/a4_1_feedback.png)
+2. On GitHub, open a PR from `<your-branch>` → `main`.
+3. **PR title:** `A2 submission — <Your Name>`.
+4. **PR body** must include:
+   - Your GitHub handle.
+   - The screenshot of `/neil/feedback` congratulating you for A4.1 (drag-and-drop into the PR body, or reference it as `![A4.1](submissions/a4_1_feedback.png)`).
+   - The screenshot for A4.2 with the MSE value visible.
+   - A one-paragraph reflection: what surprised you about DDS or the filter?
+5. Neil (or a designated senior) reviews the PR:
+   - Screenshots must show your handle in the feedback string.
+   - On approval, they close the PR **without merging**.
+6. That's it — the PR is your record of having completed A4. It never lands on `main`: merging would ship your working `hello_publisher.py`/`lpf_node.py` as the template, handing the answer to every student who clones this repo afterward.
 
-   ### A4.2 EKF
-   ![A4.2 feedback](submissions/a4_2_feedback.png)
-   ```
-5. **Wait for review.** Neil will review your PR and may request changes.
-6. **The PR does not get merged.** On approval it's closed without merging — it's your record of having completed A4, not something that lands on `main`. Merging would ship your working `dead_reckoning_node.py`/`ekf_node.py` as the template, handing the answer to every student who clones this repo afterward.
+> **Why bother with a PR if it doesn't merge?** The PR is how you practice the real MFE workflow — every change to `MFE-Driverless-V1` lands via PR + review, no exceptions. This assignment mimics that process end-to-end (branch, push, PR, review); the merge step is the one part intentionally skipped, so the template stays answer-free for the next student.
+
+### What reviewers look for
+
+- Node runs without exceptions inside the container.
+- Screenshots prove the auto-grader accepted your new_member.
+- No secrets or personal paths committed.
+- Reasonable commit messages.
+
+---
+
+## 9. Submission
+1. Commit your changes to your `FirstNameLastName` branch.
+2. Include both feedback screenshots in `submissions/`.
+3. Open a pull request against `main` when done (see section 8 for the full workflow).
+
+---
+
+## 10. Parameters
+
+The scenario constants (signal frequencies/amplitudes, noise, filter α, grader tolerances, timer periods) are exposed as ROS parameters and loaded from YAML at launch time. You should not need to edit them for the graded assignment, but tweaking them locally is a useful way to build intuition (e.g. crank up `noise_std` and watch your MSE climb).
+
+- Grader side: [`ros2_ws/src/a4_grader/config/params.yaml`](ros2_ws/src/a4_grader/config/params.yaml) — `signal_hz`, `f1`, `a1`, `f2`, `a2`, `noise_std`, `seed` (for `signal_publisher`); `alpha`, `match_window`, `mse_tolerance`, `discovery_period_s`, `grade_period_s` (for `grader`).
+- Student side: [`ros2_ws/src/a4_new_member/config/params.yaml`](ros2_ws/src/a4_new_member/config/params.yaml) — `alpha` (fixed at `0.1` for grading; do **not** change for your submission).
+
+The launch files (`neil.launch.py`, `lpf.launch.py`) pass the YAML file into each node via the `parameters=[...]` argument, so `ros2 launch` picks them up automatically.
+
