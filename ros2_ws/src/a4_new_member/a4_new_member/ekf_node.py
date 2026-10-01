@@ -91,25 +91,21 @@ class EKF:
 
         px, py, theta, v = self.x
 
-        # ------------------------------------------------------------------
-        # TODO(student): implement the predict step.
-        #
-        # 1. Propagate the state through the non-linear motion model above.
-        # 2. Build the Jacobian F = df/dx evaluated at the current state:
-        #        F = [[1, 0, -v*sin(theta)*dt, cos(theta)*dt],
-        #             [0, 1,  v*cos(theta)*dt, sin(theta)*dt],
-        #             [0, 0,  1,               0            ],
-        #             [0, 0,  0,               1            ]]
-        # 3. Propagate covariance: P = F @ P @ F.T + Q
-        # ------------------------------------------------------------------
+        px_new = px + v * np.cos(theta) * dt
+        py_new = py + v * np.sin(theta) * dt
+        theta_new = theta + omega_z * dt
+        v_new = v + a_body_x * dt
 
-        # Stub: identity propagation so the node still runs before the student fills it in.
-        self.x = np.array([px, py, theta, v])  # TODO
-        F = np.eye(4)                          # TODO
+        self.x = np.array([px_new, py_new, theta_new, v_new])
+
+        F = np.array([
+            [1.0, 0.0, -v * np.sin(theta) * dt, np.cos(theta) * dt],
+            [0.0, 1.0,  v * np.cos(theta) * dt, np.sin(theta) * dt],
+            [0.0, 0.0,  1.0,                    0.0               ],
+            [0.0, 0.0,  0.0,                    1.0               ]
+        ])
+
         self.P = F @ self.P @ F.T + self.Q
-
-        # keep names referenced so linters don't strip them
-        _ = (a_body_x, omega_z, dt)
 
     def update_gps(self, z_x: float, z_y: float) -> None:
         """GPS measures position directly: z = H x + v, with H = [[1,0,0,0],[0,1,0,0]]."""
@@ -117,16 +113,11 @@ class EKF:
                       [0.0, 1.0, 0.0, 0.0]])
         z = np.array([z_x, z_y])
 
-        # ------------------------------------------------------------------
-        # TODO(student): implement the EKF update step.
-        #     y   = z - H @ x                 # innovation
-        #     S   = H @ P @ H.T + R           # innovation covariance
-        #     K   = P @ H.T @ inv(S)          # Kalman gain
-        #     x   = x + K @ y
-        #     P   = (I - K @ H) @ P
-        # ------------------------------------------------------------------
-
-        _ = (H, z)  # remove once implemented
+        y = z - H @ self.x
+        S = H @ self.P @ H.T + self.R
+        K = self.P @ H.T @ inv(S)
+        self.x = self.x + K @ y
+        self.P = (np.eye(4) - K @ H) @ self.P
 
 
 class EkfNode(Node):
@@ -222,6 +213,7 @@ class EkfNode(Node):
         odom.pose.pose.orientation.w = qw
         odom.twist.twist.linear.x = float(v)
         self.pub.publish(odom)
+        self.get_logger().info(f"EKF: pos=({px:.2f}, {py:.2f}) theta={theta:.2f} v={v:.2f}")
 
 
 def main():

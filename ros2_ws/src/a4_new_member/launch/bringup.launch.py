@@ -1,7 +1,7 @@
-"""Composed bring-up: Neil stack + new_member DR + new_member EKF nodes.
+"""Composed bring-up: Grader stack + new_member DR + new_member EKF nodes.
 
 Includes:
-  - a4_neil/neil.launch.py       (NOT namespaced — it owns /grader/*)
+  - a4_grader/grader.launch.py       (NOT namespaced — it owns /grader/*)
   - a4_new_member/dr.launch.py     (pushed under /<github_user>)
   - a4_new_member/ekf.launch.py    (pushed under /<github_user>)
 
@@ -22,7 +22,7 @@ def generate_launch_description():
     github_user = LaunchConfiguration('github_user')
 
     neil_launch = os.path.join(
-        get_package_share_directory('a4_neil'), 'launch', 'neil.launch.py'
+        get_package_share_directory('a4_grader'), 'launch', 'grader.launch.py'
     )
     dr_launch = os.path.join(
         get_package_share_directory('a4_new_member'), 'launch', 'dr.launch.py'
