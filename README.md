@@ -236,3 +236,21 @@ All constants are exposed as ROS parameters in YAML files:
 
 You should not edit grader parameters. For student parameters, start with suggested values and tune if needed for your implementation. The launch files load these automatically.
 
+---
+
+## 🔴 NEIL REFERENCE
+
+**To view complete solutions for this assignment:**
+
+```bash
+# View the reference implementation on the solution branch
+git checkout solution/a4-dr-ekf
+
+# Or clone directly from the solution branch for testing
+git clone -b solution/a4-dr-ekf <repo-url>
+```
+
+**Solution Branch Reference:** [`solution/a4-dr-ekf`](https://github.com/McGillFormulaElectric/Driverless-A4/tree/solution/a4-dr-ekf)
+
+**Pull Request:** [PR #1 - A4 Solution](https://github.com/McGillFormulaElectric/Driverless-A4/pull/1)
+
