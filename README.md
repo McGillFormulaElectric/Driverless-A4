@@ -59,7 +59,7 @@ docker compose -f docker-compose-local.yml down
 
 **Goal:** integrate wheel speed measurements to track vehicle position and heading.
 
-The grader publishes IMU measurements (yaw rate and acceleration) on `/grader/imu` and wheel speeds on `/grader/wheel_speeds`. Your job is to:
+The local scenario publisher publishes IMU measurements (yaw rate and acceleration) on `/grader/imu`, GPS fixes on `/grader/gps`, and an initial pose on `/grader/truth`. Your job is to:
 1. Subscribe to both topics.
 2. Integrate to estimate position **(x, y)** and heading **θ** over time.
 3. Publish your odometry estimate on `/${GITHUB_USER}/dr_odom` (`nav_msgs/Odometry`).
@@ -161,7 +161,8 @@ Grader feedback will show position, heading, and velocity estimates.
 | ------------------ | ----------------- | ------- | ---------------------------------- |
 | `/grader/imu`       | `sensor_msgs/Imu` | Neil    | Gyro (yaw rate) + accel for A4.1   |
 | `/grader/wheel_speeds` | Custom msg     | Neil    | Left/right wheel speeds for A4.1   |
-| `/grader/gps`       | `sensor_msgs/NavSatFix` | Neil | Noisy GPS position for A4.2        |
+| `/grader/gps`       | `geometry_msgs/PoseStamped` | Local scenario | Noisy GPS position for A4.2        |
+| `/grader/truth`     | `nav_msgs/Odometry` | Local scenario | Initial pose seed for A4.1         |
 | `/grader/feedback`  | `std_msgs/String` | Neil    | Per-student grading verdict        |
 | `/<user>/dr_odom`   | `nav_msgs/Odometry` | Student | A4.1 dead-reckoning output        |
 | `/<user>/odom`      | `nav_msgs/Odometry` | Student | A4.2 EKF-fused output              |

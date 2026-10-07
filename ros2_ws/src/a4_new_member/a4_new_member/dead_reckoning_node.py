@@ -47,7 +47,7 @@ class DeadReckoningNode(Node):
         self.sub = self.create_subscription(
             Imu, '/grader/imu', self._on_imu, RELIABLE_QOS
         )
-        self.pub = self.create_publisher(Odometry, 'odom_dr', RELIABLE_QOS)
+        self.pub = self.create_publisher(Odometry, 'dr_odom', RELIABLE_QOS)
 
         # Initial state — seeded from the vehicle's actual position/heading/
         # speed the moment we start tracking (see _on_truth). Not assumed
@@ -68,7 +68,7 @@ class DeadReckoningNode(Node):
 
         ns = self.get_namespace()
         self.get_logger().info(
-            f'Dead-reckoning from /grader/imu -> {ns}/odom_dr (map frame). '
+            f'Dead-reckoning from /grader/imu -> {ns}/dr_odom (map frame). '
             'Expect drift; A4.1 grader only scores the first 10 s.'
         )
 
