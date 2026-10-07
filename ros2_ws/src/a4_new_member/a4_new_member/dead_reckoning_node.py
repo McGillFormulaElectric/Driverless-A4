@@ -106,28 +106,17 @@ class DeadReckoningNode(Node):
             # Skip pathological gaps (clock jumps, first-message races).
             return
 
-        # ------------------------------------------------------------------
-        # TODO(student): implement dead-reckoning integration.
-        #
-        # IMU gives you:
-        #   a_body_x = msg.linear_acceleration.x   (forward acceleration, m/s^2)
-        #   omega_z  = msg.angular_velocity.z      (yaw rate, rad/s)
-        #
-        # This is a unicycle model:
-        #   theta_dot = omega_z
-        #   v_dot     = a_body_x
-        #   x_dot     = v * cos(theta)
-        #   y_dot     = v * sin(theta)
-        #
-        # Integrate over dt using semi-implicit (symplectic) Euler:
-        #   https://en.wikipedia.org/wiki/Semi-implicit_Euler_method
-        #
-        # Update self._x, self._y, self._theta, self._v.
-        # ------------------------------------------------------------------
-        self._theta = self._theta  # <-- replace this stub with the correct expression
-        self._v = self._v          # <-- replace this stub with the correct expression
-        self._x = self._x          # <-- replace this stub with the correct expression
-        self._y = self._y          # <-- replace this stub with the correct expression
+        # Semi-implicit Euler integration.
+        a_body_x = msg.linear_acceleration.x
+        omega_z = msg.angular_velocity.z
+
+        # Update velocity first (then use it for position).
+        self._v += a_body_x * dt
+        # Update heading.
+        self._theta += omega_z * dt
+        # Update position using updated velocity and heading.
+        self._x += self._v * math.cos(self._theta) * dt
+        self._y += self._v * math.sin(self._theta) * dt
 
         self._publish(msg.header.stamp)
 
