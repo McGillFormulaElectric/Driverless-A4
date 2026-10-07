@@ -15,7 +15,6 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import PushRosNamespace
 
 
 def generate_launch_description():
@@ -38,7 +37,6 @@ def generate_launch_description():
     ])
 
     new_member_group = GroupAction([
-        PushRosNamespace(github_user),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(dr_launch),
             launch_arguments={'github_user': github_user}.items(),

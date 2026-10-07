@@ -7,7 +7,7 @@ This assignment introduces odometry integration and sensor fusion via Extended K
 
 Both estimators run alongside a grader that auto-discovers your topics and publishes feedback on `/grader/feedback`.
 
-> **Grading Setup** — The grader runs as a local Docker service alongside your student code. Both use host networking and ROS domain ID 42 for automatic DDS discovery.
+> **Grading Setup** — The grader and both student nodes run in one local Docker container on ROS domain ID 42. No remote grader or host networking is required.
 
 ---
 
@@ -25,7 +25,7 @@ git checkout <FirstNameLastName>
 ```
 
 ### 1.2 Docker & Local Grading
-The grader runs as a local service inside Docker alongside your student code. Both use host networking and ROS domain ID 42 for automatic DDS discovery.
+The grader, dead-reckoning node, and EKF run in one Docker container on the same local ROS graph. The container uses ROS domain ID 42 and restricts discovery to its local network namespace.
 
 ```bash
 cd docker
@@ -33,13 +33,9 @@ docker compose -f docker-compose-local.yml build
 docker compose -f docker-compose-local.yml up -d
 ```
 
-This starts two services:
-1. **student** — your code (subscriber + publisher)
-2. **grader** — reference implementation (signal publisher + grader)
+This starts one service, `a4`, which builds the workspace and launches the local grader, dead-reckoning node, and EKF with the `student` namespace.
 
-Both services share the same network and ROS domain, so topics auto-discover via DDS.
-
-Inside either container, the workspace is mounted at `/workspace` (your `ros2_ws`). Build and source:
+Inside the container, the workspace is mounted at `/workspace` (your `ros2_ws`). Build and source:
 
 ```bash
 cd /workspace
@@ -49,9 +45,7 @@ source install/setup.bash
 
 View logs from either service:
 ```bash
-docker compose -f docker-compose-local.yml logs student -f  # tail student logs
-docker compose -f docker-compose-local.yml logs grader -f   # tail grader logs
-docker compose -f docker-compose-local.yml logs             # both services
+docker compose -f docker-compose-local.yml logs -f a4       # grader and student logs
 ```
 
 Stop everything:
@@ -253,4 +247,3 @@ git clone -b solution/a4-dr-ekf <repo-url>
 **Solution Branch Reference:** [`solution/a4-dr-ekf`](https://github.com/McGillFormulaElectric/Driverless-A4/tree/solution/a4-dr-ekf)
 
 **Pull Request:** [PR #1 - A4 Solution](https://github.com/McGillFormulaElectric/Driverless-A4/pull/1)
-
