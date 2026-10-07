@@ -28,6 +28,7 @@ def generate_launch_description():
             package='a4_new_member',
             executable='ekf_node',
             name='ekf_node',
+            namespace=github_user,
             output='screen',
             parameters=[params_file],
         ),

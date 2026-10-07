@@ -28,6 +28,7 @@ def generate_launch_description():
             package='a4_new_member',
             executable='dead_reckoning_node',
             name='dead_reckoning_node',
+            namespace=github_user,
             output='screen',
             parameters=[params_file],
         ),
