@@ -86,7 +86,7 @@ class DeadReckoningNode(Node):
         self._seeded = True
         self.destroy_subscription(self._truth_sub)
 
-    def _on_imu(self, msg: Imu) -> None:
+    def _on_imu(self, msg: Imu) -> None: # action after subscribed topic sends a message
         if not self._seeded:
             # Haven't got our starting fix yet — nothing to integrate from.
             return
@@ -124,10 +124,13 @@ class DeadReckoningNode(Node):
         #
         # Update self._x, self._y, self._theta, self._v.
         # ------------------------------------------------------------------
-        self._theta = self._theta  # <-- replace this stub with the correct expression
-        self._v = self._v          # <-- replace this stub with the correct expression
-        self._x = self._x          # <-- replace this stub with the correct expression
-        self._y = self._y          # <-- replace this stub with the correct expression
+        a_body_x = msg.linear_acceleration.x
+        omega_z = msg.angular_velocity.z
+
+        self._theta = self._theta + omega_z*dt # <-- replace this stub with the correct expression
+        self._v = self._v + a_body_x * dt          # <-- replace this stub with the correct expression
+        self._x = self._x + self._v*math.cos(self._theta)*dt          # <-- replace this stub with the correct expression
+        self._y = self._y + self._v*math.sin(self._theta)*dt         # <-- replace this stub with the correct expression
 
         self._publish(msg.header.stamp)
 

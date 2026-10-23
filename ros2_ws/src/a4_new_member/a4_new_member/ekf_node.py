@@ -102,10 +102,20 @@ class EKF:
         #             [0, 0,  0,               1            ]]
         # 3. Propagate covariance: P = F @ P @ F.T + Q
         # ------------------------------------------------------------------
+        
+        px = px + v * math.cos(theta) * dt
+        py = py + v * math.sin(theta) * dt
+        theta = theta + omega_z * dt
+        v = v + a_body_x * dt
 
         # Stub: identity propagation so the node still runs before the student fills it in.
-        self.x = np.array([px, py, theta, v])  # TODO
-        F = np.eye(4)                          # TODO
+        self.x = np.array([px, py, theta, v])  
+        F = np.array([
+            [1, 0, -v*math.sin(theta)*dt, math.cos(theta)*dt],
+            [0, 1,  v*math.cos(theta)*dt, math.sin(theta)*dt],
+            [0, 0,  1,               0            ],
+            [0, 0,  0,               1            ]
+        ])
         self.P = F @ self.P @ F.T + self.Q
 
         # keep names referenced so linters don't strip them
@@ -125,8 +135,16 @@ class EKF:
         #     x   = x + K @ y
         #     P   = (I - K @ H) @ P
         # ------------------------------------------------------------------
+        # whenever there is gps measurement, we update dead reckoning
+        y = z - H @ self.x # H keeps only position component of self.x
+        S = H @ self.P @ H.T + self.R
+        K = self.P @ H.T @ inv(S)
 
-        _ = (H, z)  # remove once implemented
+        # Final Estimate=Prediction+K⋅(Measurement−Prediction)        
+        self.x = self.x + K @ y # update state 
+        self.P = (np.identity(4) - K @ H) @ self.P
+
+        #_ = (H, z)  # remove once implemented
 
 
 class EkfNode(Node):
