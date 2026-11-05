@@ -104,8 +104,13 @@ class EKF:
         # ------------------------------------------------------------------
 
         # Stub: identity propagation so the node still runs before the student fills it in.
-        self.x = np.array([px, py, theta, v])  # TODO
-        F = np.eye(4)                          # TODO
+        self.x = np.array([px + v*math.cos(theta)*dt, py + v * math.sin(theta) * dt, theta + omega_z * dt, v + a_body_x * dt])  # TODO
+        F = np.array([
+            [1.0, 0.0, -v * math.sin(theta) * dt, math.cos(theta) * dt],
+            [0.0, 1.0,  v * math.cos(theta) * dt, math.sin(theta) * dt],
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ])                          # TODO
         self.P = F @ self.P @ F.T + self.Q
 
         # keep names referenced so linters don't strip them
@@ -126,7 +131,11 @@ class EKF:
         #     P   = (I - K @ H) @ P
         # ------------------------------------------------------------------
 
-        _ = (H, z)  # remove once implemented
+        y = z - H @ self.x
+        S = H @ self.P @ H.T + self.R
+        K = self.P @ H.T @ inv(S)
+        self.x = self.x + K @ y
+        self.P = (np.eye(4) - K @ H) @ self.P
 
 
 class EkfNode(Node):

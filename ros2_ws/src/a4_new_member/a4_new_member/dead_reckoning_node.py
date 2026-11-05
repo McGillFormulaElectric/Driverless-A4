@@ -124,10 +124,10 @@ class DeadReckoningNode(Node):
         #
         # Update self._x, self._y, self._theta, self._v.
         # ------------------------------------------------------------------
-        self._theta = self._theta  # <-- replace this stub with the correct expression
-        self._v = self._v          # <-- replace this stub with the correct expression
-        self._x = self._x          # <-- replace this stub with the correct expression
-        self._y = self._y          # <-- replace this stub with the correct expression
+        self._theta = self._theta + msg.angular_velocity.z * dt
+        self._v = self._v + msg.linear_acceleration.x * dt
+        self._x = self._x + self._v * math.cos(self._theta) * dt
+        self._y = self._y + self._v * math.sin(self._theta) * dt
 
         self._publish(msg.header.stamp)
 
